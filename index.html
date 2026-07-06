@@ -3,143 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบหลักฐานการปฏิบัติงาน P4P เชิงคุณภาพ</title>
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#8b5cf6">
-    <link rel="apple-touch-icon" href="./icon-192.png">
+    <title>P4P เชิงคุณภาพ & หลักฐานการปฏิบัติงาน</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
         
+        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
+
+        /* การตั้งค่าสำหรับการพิมพ์ */
         @media print {
             body { background-color: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
-            .print-page-break { page-break-after: always; }
             .page-container { padding: 0 !important; margin: 0 !important; box-shadow: none !important; width: 100% !important; max-width: 100% !important; }
-            @page portrait_page { size: A4 portrait; margin: 15mm 10mm; }
-            .page-portrait { page: portrait_page; }
-            .table-compact th, .table-compact td { padding: 4px 6px !important; font-size: 13px !important; }
+            
+            /* แบ่งหน้ากระดาษ */
+            .page-break { page-break-before: always; }
+            .avoid-break { page-break-inside: avoid; }
+            
+            @page { size: A4 portrait; margin: 15mm; }
+            
+            .print-table th, .print-table td { padding: 4px !important; font-size: 12px !important; border: 1px solid #000; }
         }
-        .table-borders th, .table-borders td { border: 1px solid #000; }
-        input[type="number"].seamless-input::-webkit-inner-spin-button,
-        input[type="number"].seamless-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type="number"].seamless-input { -moz-appearance: textfield; background: transparent; border: none; width: 100%; text-align: center; }
-        input[type="number"].seamless-input:focus { outline: 2px solid #8b5cf6; background: #faf5ff; color: #000; }
+
+        .table-borders th, .table-borders td { border: 1px solid #d1d5db; }
+        .print-table th, .print-table td { border: 1px solid #000; }
+        
+        /* Custom Input */
+        .input-qty { width: 60px; text-align: center; border: 1px solid #9ca3af; border-radius: 4px; padding: 2px; }
+        .input-qty:focus { outline: 2px solid #3b82f6; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
+        // ฐานข้อมูลภาระงานเชิงคุณภาพ (ดึงจากตัวอย่าง)
         const DEFAULT_TASKS = [
-            { code: "QR 01", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "จัดเตรียม ประสานงานและเชิญประชุมคณะกรรมการชุดต่างๆ", unit: "ครั้ง", time: 45, qty: 0, images: [] },
-            { code: "QR 02", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "จัดทำและส่งเอกสารคุณภาพให้หน่วยงานภายนอก", unit: "เรื่อง", time: 180, qty: 0, images: [] },
-            { code: "QR 06", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "ส่งข้อมูลเพื่อประชาสัมพันธ์ รพ.แก่หน่วยงานภายนอก", unit: "เรื่อง", time: 60, qty: 0, images: [] },
-            { code: "QR 13", category: "งาน Document", name: "จัดทำเอกสารชุดควบคุม ระดับหน่วยงาน (WI)", unit: "เรื่อง", time: 5, qty: 0, images: [] },
-            { code: "QR 14", category: "งานอื่นๆ", name: "กิจกรรม Big Cleaning Day", unit: "2ครั้ง/ปี", time: 420, qty: 0, images: [] },
-            { code: "QR 16", category: "งานอื่นๆ", name: "เก็บข้อมูลแบบสำรวจความคิดเห็น/ความพึงพอใจของผู้ป่วย ผู้รับบริการ", unit: "ราย", time: 5, qty: 0, images: [] },
-            { code: "QR 17", category: "งานอื่นๆ", name: "เก็บข้อมูลแบบสำรวจความคิดเห็น/ผู้รับบริการจากตู้รับความคิดเห็น", unit: "ครั้ง/เดือน", time: 60, qty: 0, images: [] },
-            { code: "QR 18", category: "งานอื่นๆ", name: "บันทึกข้อมูลแบบสำรวจในโปรแกรมสถิติสำเร็จรูป", unit: "ราย", time: 5, qty: 0, images: [] },
-            { code: "QR 20", category: "งานอื่นๆ", name: "วิเคราะห์ สรุปสถิติ โปรแกรมสถิติสำเร็จรูป", unit: "เรื่อง", time: 180, qty: 0, images: [] },
-            { code: "AM 13", category: "ภารกิจด้าน วิชาการและ การแพทย์", name: "คณะกรรมการเกี่ยวกับพัสดุ", unit: "ครั้ง", time: 15, qty: 0, images: [] }
+            { code: "QR 01", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "จัดเตรียม ประสานงานและเชิญประชุมคณะกรรมการชุดต่างๆ", unit: "ครั้ง", time: 45 },
+            { code: "QR 02", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "จัดทำและส่งเอกสารคุณภาพให้หน่วยงานภายนอก", unit: "เรื่อง", time: 180 },
+            { code: "QR 03", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "หาข้อมูล ออกแบบ จัดทำ Poster Presentation", unit: "เรื่อง", time: 240 },
+            { code: "QR 04", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "จัดทำสื่อนำเสนอ (Power Point)", unit: "ครั้ง", time: 180 },
+            { code: "QR 05", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "จัดทำสื่อสอน ฝึกอบรม (Power Point)", unit: "เรื่อง", time: 90 },
+            { code: "QR 06", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "ส่งข้อมูลเพื่อประชาสัมพันธ์ รพ.แก่หน่วยงานภายนอก", unit: "เรื่อง", time: 60 },
+            { code: "QR 07", category: "งานพัฒนาคุณภาพ และระบบงาน", name: "ค้นหาข้อมูล/จัดทำข้อมูลความรู้ (เผยแพร่ผ่านสื่อต่างๆ)", unit: "เรื่อง", time: 120 },
+            { code: "QR 09", category: "งาน Document", name: "จัดทำเอกสารคุณภาพ (ใหม่)", unit: "หน้า", time: 7 },
+            { code: "QR 10", category: "งาน Document", name: "ทบทวนเอกสารคุณภาพ", unit: "2 ครั้ง/ปี", time: 420 },
+            { code: "QR 11", category: "งาน Document", name: "ตรวจสอบรูปแบบการจัดทำเอกสาร", unit: "เรื่อง", time: 5 },
+            { code: "QR 12", category: "งาน Document", name: "จัดทำเอกสารชุดควบคุม ระดับ รพ. (PM)", unit: "เรื่อง", time: 10 },
+            { code: "QR 13", category: "งาน Document", name: "จัดทำเอกสารชุดควบคุม ระดับหน่วยงาน (WI)", unit: "เรื่อง", time: 5 },
+            { code: "QR 14", category: "งานอื่นๆ", name: "กิจกรรม Big Cleaning Day", unit: "2ครั้ง/ปี", time: 420 },
+            { code: "QR 15", category: "งานอื่นๆ", name: "ตรวจสอบข้อมูล/คำคะแนนและคำนวณค่าตอบแทน P4P", unit: "ราย", time: 5 },
+            { code: "QR 16", category: "งานอื่นๆ", name: "เก็บข้อมูลแบบสำรวจความคิดเห็น/ความพึงพอใจของผู้ป่วย", unit: "ราย", time: 5 },
+            { code: "QR 17", category: "งานอื่นๆ", name: "เก็บข้อมูลแบบสำรวจความคิดเห็น/ผู้รับบริการจากตู้", unit: "ครั้ง/เดือน", time: 60 },
+            { code: "QR 18", category: "งานอื่นๆ", name: "บันทึกข้อมูลแบบสำรวจในโปรแกรมสถิติสำเร็จรูป", unit: "ราย", time: 5 },
+            { code: "QR 19", category: "งานอื่นๆ", name: "บันทึกข้อมูลโปรแกรม TCB", unit: "ราย", time: 5 },
+            { code: "QR 20", category: "งานอื่นๆ", name: "วิเคราะห์ สรุปสถิติ โปรแกรมสถิติสำเร็จรูป", unit: "เรื่อง", time: 180 },
+            { code: "QR 22", category: "งานอื่นๆ", name: "ตอบและให้ข้อเสนอแนะ Incident Report", unit: "ใบ", time: 10 },
+            { code: "QR 23", category: "งานอื่นๆ", name: "ทบทวนและวิเคราะห์ Incident Report เพื่อนำไปสู่การปรับปรุง (RCA)", unit: "เรื่อง", time: 30 },
+            { code: "QR 24", category: "งานอื่นๆ", name: "ติดตามรวบรวมตัวชี้วัดจากหน่วยงาน/คกก.", unit: "ครั้ง/เดือน", time: 120 },
+            { code: "QR 25", category: "งานอื่นๆ", name: "สรุปรายงานตัวชี้วัดเสนอผู้บริหาร", unit: "ครั้ง/เดือน", time: 120 },
+            { code: "QR 26", category: "งานอื่นๆ", name: "งาน/โครงการ/กิจกรรมอื่นๆที่รับมอบหมายจากผู้อำนวยการ", unit: "เรื่อง", time: 60 },
+            { code: "QR 35", category: "งานโครงการ/ฝึกอบรม", name: "วิทยากรบรรยาย", unit: "ครั้ง", time: 360 },
+            { code: "QR 36", category: "งานโครงการ/ฝึกอบรม", name: "วิทยากรกลุ่ม", unit: "ครั้ง", time: 360 },
+            { code: "AM 03", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "การรายงาน/วิเคราะห์ข้อมูล/เปรียบเทียบแนวโน้มข้อมูลสถิติ", unit: "เรื่อง", time: 60 },
+            { code: "AM 04", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "จัดเตรียม/เขียนโครงการ เพื่อการพัฒนาคุณภาพของโรงพยาบาล", unit: "เรื่อง", time: 180 },
+            { code: "AM 05", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "จัดเก็บ รวบรวม ประมวลผลตัวชี้วัดของหน่วยงาน", unit: "ตัวชี้วัด", time: 30 },
+            { code: "AM 06", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "จัดเก็บ รวบรวม ประมวลผลข้อมูลสถิติระดับโรงพยาบาล", unit: "รายการ", time: 180 },
+            { code: "AM 08", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "นวัตกรรม", unit: "เรื่อง", time: 360 },
+            { code: "AM 11", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "ร่วมทบทวน 12 กิจกรรม", unit: "ครั้ง", time: 180 },
+            { code: "AM 12", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "นำเสนอผลการดำเนินงานของหน่วยงาน", unit: "ครั้ง", time: 60 },
+            { code: "AM 13", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "คณะกรรมการเกี่ยวกับพัสดุ", unit: "ครั้ง", time: 15 },
+            { code: "AM 17", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "การจัดบอร์ดพัฒนาคุณภาพภายใน/ภายนอกหน่วยงาน", unit: "ครั้ง", time: 120 },
+            { code: "AM 18", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "ตรวจสอบพัสดุคงคลังรายเดือน", unit: "1 ครั้งเดือน/", time: 30 },
+            { code: "AM 19", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "5 ส หน่วยงาน 2 ครั้ง/เดือน", unit: "ครั้ง", time: 30 },
+            { code: "AM 20", category: "กิจกรรมงานพัฒนาคุณภาพ ของภารกิจ", name: "ประชุมการจัดความเสี่ยงภายในกลุ่มงาน", unit: "ครั้ง", time: 30 }
         ];
 
+        // ฟังก์ชันบีบอัดรูปภาพหลักฐาน
+        const compressImage = (file) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1000;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        };
+
         function App() {
-            const [activeTab, setActiveTab] = React.useState(1);
+            const [step, setStep] = React.useState(1);
+            const [printZoom, setPrintZoom] = React.useState(100);
             const [showSettings, setShowSettings] = React.useState(false);
-            
+
+            // ข้อมูลผู้ใช้งาน, เรทคะแนน และโลโก้
             const [userInfo, setUserInfo] = React.useState(() => {
                 const saved = localStorage.getItem('p4p_qual_user');
                 return saved ? JSON.parse(saved) : {
-                    prefix: "นาย", fname: "จุมพล", lname: "อุทธา",
-                    position: "เภสัชกรชำนาญการ", department: "กลุ่มงานเภสัชกรรม ภารกิจด้านวิชาการและการแพทย์",
+                    name: "นายจุมพล อุทธา",
+                    position: "เภสัชกรชำนาญการ",
+                    department: "กลุ่มงานเภสัชกรรม",
+                    mission: "ภารกิจด้านวิชาการและการแพทย์",
                     period: "๑ มกราคม - ๓๑ มีนาคม พ.ศ. ๒๕๖๙",
-                    rate: 0.171, logo: ""
+                    year: "2569",
+                    rate: 0.171, // ค่าตั้งต้นคะแนนต่อนาที
+                    logo: null // เก็บ Base64 ของโลโก้
                 };
             });
 
+            // ข้อมูลภาระงาน
             const [tasks, setTasks] = React.useState(() => {
                 const saved = localStorage.getItem('p4p_qual_tasks');
-                return saved ? JSON.parse(saved) : DEFAULT_TASKS;
+                if (saved) return JSON.parse(saved);
+                return DEFAULT_TASKS.map(t => ({ ...t, qty: 0, images: [] }));
             });
 
             React.useEffect(() => { localStorage.setItem('p4p_qual_user', JSON.stringify(userInfo)); }, [userInfo]);
             React.useEffect(() => { localStorage.setItem('p4p_qual_tasks', JSON.stringify(tasks)); }, [tasks]);
 
-            const handleUserInfoChange = (e) => {
+            const handleUserInfo = (e) => {
                 const { name, value } = e.target;
                 setUserInfo(prev => ({ ...prev, [name]: value }));
             };
 
             const handleRateChange = (e) => {
-                const val = parseFloat(e.target.value);
+                let val = parseFloat(e.target.value);
                 setUserInfo(prev => ({ ...prev, rate: isNaN(val) ? 0 : val }));
             };
 
             const handleLogoUpload = (e) => {
                 const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (evt) => { setUserInfo(prev => ({...prev, logo: evt.target.result})); };
-                    reader.readAsDataURL(file);
+                if(!file) return;
+                // ตรวจสอบขนาดไม่ให้เกิน 2MB เพื่อป้องกัน localStorage เต็ม
+                if(file.size > 2 * 1024 * 1024) {
+                    alert('ขนาดไฟล์โลโก้ใหญ่เกินไป กรุณาใช้ไฟล์ขนาดไม่เกิน 2MB');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setUserInfo(prev => ({ ...prev, logo: event.target.result }));
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const removeLogo = () => {
+                if(confirm('ต้องการลบโลโก้ใช่หรือไม่?')) {
+                    setUserInfo(prev => ({ ...prev, logo: null }));
                 }
             };
-            const removeLogo = () => setUserInfo(prev => ({...prev, logo: ""}));
 
             const handleQtyChange = (index, value) => {
-                let parsedValue = value === "" ? 0 : parseInt(value);
-                if (isNaN(parsedValue) || parsedValue < 0) parsedValue = 0;
+                let parsed = parseInt(value);
+                if (isNaN(parsed) || parsed < 0) parsed = 0;
                 const newTasks = [...tasks];
-                newTasks[index].qty = parsedValue;
+                newTasks[index].qty = parsed;
                 setTasks(newTasks);
             };
 
-            const compressImage = (file, callback) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = event => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1200;
-                        let width = img.width;
-                        let height = img.height;
-                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                        canvas.width = width; canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        callback(canvas.toDataURL('image/jpeg', 0.8));
-                    };
-                };
+            const handleTimeChange = (index, value) => {
+                let parsed = parseInt(value);
+                if (isNaN(parsed) || parsed < 0) parsed = 0;
+                const newTasks = [...tasks];
+                newTasks[index].time = parsed;
+                setTasks(newTasks);
             };
 
-            const handleImageUpload = (taskIndex, e) => {
+            const handleImageUpload = async (index, e) => {
                 const files = Array.from(e.target.files);
                 if (files.length === 0) return;
-                
-                let processedImages = [];
-                files.forEach(file => {
-                    compressImage(file, (base64Img) => {
-                        processedImages.push(base64Img);
-                        if (processedImages.length === files.length) {
-                            const newTasks = [...tasks];
-                            newTasks[taskIndex].images = [...(newTasks[taskIndex].images || []), ...processedImages];
-                            setTasks(newTasks);
-                        }
-                    });
-                });
+                const btn = e.target.parentElement;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<span class="text-xs">กำลังย่อรูป...</span>';
+                const compressedImages = await Promise.all(files.map(f => compressImage(f)));
+                const newTasks = [...tasks];
+                newTasks[index].images = [...(newTasks[index].images || []), ...compressedImages];
+                setTasks(newTasks);
+                btn.innerHTML = originalHtml;
                 e.target.value = '';
             };
 
             const removeImage = (taskIndex, imgIndex) => {
+                if(!confirm("ต้องการลบรูปหลักฐานนี้ใช่หรือไม่?")) return;
                 const newTasks = [...tasks];
                 newTasks[taskIndex].images.splice(imgIndex, 1);
                 setTasks(newTasks);
@@ -152,10 +223,14 @@
                 }
             };
 
+            // ---- เพิ่มฟังก์ชันจัดการภาระงานแบบ Manual (เพิ่ม/ลด/แก้) ----
             const handleTaskEdit = (index, field, value) => {
                 const newTasks = [...tasks];
-                if (field === 'time') { newTasks[index][field] = parseInt(value) || 0; } 
-                else { newTasks[index][field] = value; }
+                if (field === 'time') {
+                    newTasks[index][field] = parseInt(value) || 0;
+                } else {
+                    newTasks[index][field] = value;
+                }
                 setTasks(newTasks);
             };
 
@@ -164,16 +239,22 @@
             };
 
             const deleteTask = (index) => {
-                if (confirm("ต้องการลบภาระงานนี้ใช่หรือไม่?")) {
+                if (confirm("ต้องการลบภาระงานนี้ใช่หรือไม่? (รูปที่แนบไว้จะหายไปด้วย)")) {
                     const newTasks = [...tasks];
                     newTasks.splice(index, 1);
                     setTasks(newTasks);
                 }
             };
+            // ----------------------------------------------------------
 
             const exportExcel = () => {
+                // กรองข้อมูลสำหรับส่งออก (ไม่เอาภาพ)
                 const exportData = tasks.map(t => ({
-                    "CODE": t.code, "หมวดหมู่": t.category, "กิจกรรม": t.name, "หน่วยนับ": t.unit, "เวลาที่ใช้(นาที)": t.time
+                    "CODE": t.code,
+                    "หมวดหมู่": t.category,
+                    "กิจกรรม": t.name,
+                    "หน่วยนับ": t.unit,
+                    "เวลาที่ใช้(นาที)": t.time
                 }));
                 const ws = XLSX.utils.json_to_sheet(exportData);
                 const wb = XLSX.utils.book_new();
@@ -191,6 +272,8 @@
                         const wb = XLSX.read(bstr, { type: 'binary' });
                         const wsname = wb.SheetNames[0];
                         const ws = wb.Sheets[wsname];
+                        
+                        // อ่านข้อมูลเป็น Array เพื่อรองรับการจัดรูปแบบ Excel หลายแบบ
                         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
                         
                         let newTasks = [];
@@ -202,6 +285,7 @@
                             const row = rows[i];
                             if (!row || row.length === 0) continue;
 
+                            // ค้นหาบรรทัดที่เป็นหัวตาราง
                             if (!headerFound) {
                                 for (let j = 0; j < row.length; j++) {
                                     const cell = String(row[j] || "").trim().toUpperCase();
@@ -213,111 +297,191 @@
                                 }
                                 if (cIdx !== -1 && nIdx !== -1) headerFound = true;
                             } else {
+                                // ดึงข้อมูล
                                 const codeStr = String(row[cIdx] || "").trim();
+                                
+                                // ถ้ามี CODE ถือว่าเป็นภาระงาน
                                 if (cIdx !== -1 && codeStr && codeStr !== "undefined" && codeStr !== "null" && codeStr !== "") {
                                     const nameStr = String(row[nIdx] || "").trim();
                                     const unitStr = String(row[uIdx] || "ครั้ง").trim();
                                     const timeVal = parseInt(row[tIdx]) || 0;
+                                    
+                                    // หากตารางมีคอลัมน์ "หมวดหมู่" ให้อัปเดตหมวดหมู่อัตโนมัติ
                                     if (catIdx !== -1 && row[catIdx] && String(row[catIdx]).trim() !== "") {
                                         currentCategory = String(row[catIdx]).trim();
                                     }
+                                    
                                     const existing = tasks.find(t => t.code === codeStr);
-                                    newTasks.push({ code: codeStr, category: currentCategory, name: nameStr, unit: unitStr, time: timeVal, qty: existing ? existing.qty : 0, images: existing ? existing.images : [] });
+                                    newTasks.push({
+                                        code: codeStr,
+                                        category: currentCategory,
+                                        name: nameStr,
+                                        unit: unitStr,
+                                        time: timeVal,
+                                        qty: existing ? existing.qty : 0,
+                                        images: existing ? existing.images : []
+                                    });
                                 } else {
+                                    // ถ้าไม่มี CODE ให้เดาว่าเป็นบรรทัด 'ชื่อหมวดหมู่' แบบฟอร์มเก่า (Merge cell)
                                     let catName = "";
-                                    for(let j=0; j<row.length; j++) { if(row[j] && String(row[j]).trim() !== "") catName += String(row[j]).trim() + " "; }
+                                    for(let j=0; j<row.length; j++) {
+                                        if(row[j] && String(row[j]).trim() !== "") catName += String(row[j]).trim() + " ";
+                                    }
                                     catName = catName.trim();
-                                    if(catName && !catName.includes("รวม") && !catName.includes("คะแนน") && !catName.includes("บาท")) { currentCategory = catName; }
+                                    // กรองข้อความที่หลงมา (เช่น ผลรวม)
+                                    if(catName && !catName.includes("รวม") && !catName.includes("คะแนน") && !catName.includes("บาท")) {
+                                        currentCategory = catName;
+                                    }
                                 }
                             }
                         }
-                        if(newTasks.length > 0) { setTasks(newTasks); alert(`อัปเดตสำเร็จ! พบ ${newTasks.length} รายการ`); } 
-                        else { alert("รูปแบบไฟล์ไม่ถูกต้อง"); }
-                    } catch (error) { alert("เกิดข้อผิดพลาดในการอ่านไฟล์"); }
+
+                        if(newTasks.length > 0) {
+                            setTasks(newTasks);
+                            alert(`อัปเดตภาระงานสำเร็จ! พบทั้งหมด ${newTasks.length} รายการ (ระบบจะบันทึกจำค่านี้ไว้)`);
+                        } else {
+                            alert("รูปแบบไฟล์ไม่ถูกต้อง หรือไม่พบคอลัมน์ 'CODE' และ 'กิจกรรม' ในไฟล์ Excel");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert("เกิดข้อผิดพลาดในการอ่านไฟล์");
+                    }
                 };
                 reader.readAsBinaryString(file);
                 e.target.value = '';
             };
 
             const totalMins = tasks.reduce((sum, t) => sum + (t.qty * t.time), 0);
-            const activeTasks = tasks.filter(t => t.qty > 0 || (t.images && t.images.length > 0));
+            const totalScore = totalMins * (userInfo.rate || 0);
+
+            const groupedTasks = tasks.reduce((acc, task) => {
+                if (!acc[task.category]) acc[task.category] = [];
+                acc[task.category].push(task);
+                return acc;
+            }, {});
+
+            const handlePrint = () => { setTimeout(() => window.print(), 300); };
 
             return (
-                <div className="min-h-screen pb-20">
-                    <div className="bg-purple-700 text-white p-3 shadow-md no-print sticky top-0 z-50">
-                        <div className="max-w-7xl mx-auto flex justify-between items-center">
-                            <h1 className="text-xl font-bold flex items-center gap-2"><i data-lucide="file-check"></i> P4P Qualitative System</h1>
-                            <div className="flex bg-white rounded-md shadow overflow-hidden text-sm">
-                                <button onClick={() => setActiveTab(1)} className={`px-4 py-2 ${activeTab===1 ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-700 hover:bg-gray-100'}`}>บันทึกข้อมูล</button>
-                                <button onClick={() => setActiveTab(2)} className={`px-4 py-2 border-l ${activeTab===2 ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-700 hover:bg-gray-100'}`}>ตารางคะแนน</button>
-                                <button onClick={() => setActiveTab(3)} className={`px-4 py-2 border-l ${activeTab===3 ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-700 hover:bg-gray-100'}`}>เล่มหลักฐาน</button>
+                <div className="min-h-screen pb-10 flex flex-col">
+                    {/* Header Nav */}
+                    <div className="bg-indigo-700 text-white p-3 shadow-md no-print sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                            <h1 className="text-xl font-bold flex items-center gap-2">
+                                <i data-lucide="award"></i> P4P Qualitative (เชิงคุณภาพ)
+                            </h1>
+                            
+                            <div className="flex bg-white rounded-md shadow overflow-hidden">
+                                <button onClick={() => setStep(1)} className={`px-4 py-1.5 text-sm font-medium ${step===1 ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>1. บันทึกข้อมูล & รูป</button>
+                                <button onClick={() => setStep(2)} className={`px-4 py-1.5 text-sm font-medium border-l ${step===2 ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>2. ตารางคะแนน</button>
+                                <button onClick={() => setStep(3)} className={`px-4 py-1.5 text-sm font-medium border-l ${step===3 ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}>3. เล่มหลักฐาน</button>
                             </div>
+
+                            {step !== 1 && (
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 bg-indigo-800 px-3 py-1 rounded text-sm">
+                                        <i data-lucide="zoom-in" className="w-4 h-4"></i> ซูม:
+                                        <input type="range" min="70" max="130" value={printZoom} onChange={(e) => setPrintZoom(e.target.value)} className="w-20 cursor-pointer" />
+                                    </div>
+                                    <button onClick={handlePrint} className="px-4 py-1.5 bg-green-500 hover:bg-green-400 rounded text-sm font-bold flex items-center gap-1 shadow transition">
+                                        <i data-lucide="printer" className="w-4 h-4"></i> ปริ้นท์
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="max-w-7xl mx-auto p-4 mt-6">
-                        {activeTab === 1 && (
-                            <div className="bg-white rounded-xl shadow-lg p-6 max-w-5xl mx-auto animate-in fade-in">
-                                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">ข้อมูลผู้ปฏิบัติงาน</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">คำนำหน้า</label><input type="text" name="prefix" value={userInfo.prefix} onChange={handleUserInfoChange} className="w-full border rounded-md px-3 py-2" /></div>
-                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label><input type="text" name="fname" value={userInfo.fname} onChange={handleUserInfoChange} className="w-full border rounded-md px-3 py-2" /></div>
-                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">นามสกุล</label><input type="text" name="lname" value={userInfo.lname} onChange={handleUserInfoChange} className="w-full border rounded-md px-3 py-2" /></div>
-                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">ตำแหน่ง</label><input type="text" name="position" value={userInfo.position} onChange={handleUserInfoChange} className="w-full border rounded-md px-3 py-2" /></div>
-                                    <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">กลุ่มงาน/ภารกิจ</label><input type="text" name="department" value={userInfo.department} onChange={handleUserInfoChange} className="w-full border rounded-md px-3 py-2" /></div>
-                                    <div className="md:col-span-3"><label className="block text-sm font-medium text-gray-700 mb-1">ประจำปีงบประมาณ / รอบระยะเวลา</label><input type="text" name="period" value={userInfo.period} onChange={handleUserInfoChange} className="w-full border rounded-md px-3 py-2" /></div>
+                    <div className="flex-grow max-w-7xl mx-auto w-full p-4 py-6">
+                        {}
+                        {step === 1 && (
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h2 className="text-xl font-bold text-gray-800">ข้อมูลผู้ปฏิบัติงาน</h2>
+                                    <button onClick={clearData} className="text-red-500 text-sm hover:underline flex items-center gap-1"><i data-lucide="trash-2" className="w-4 h-4"></i> ล้างข้อมูลผลงาน</button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                                    <div><label className="block text-xs font-medium text-gray-500 mb-1">ชื่อ-นามสกุล</label><input type="text" name="name" value={userInfo.name} onChange={handleUserInfo} className="w-full border rounded px-3 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" /></div>
+                                    <div><label className="block text-xs font-medium text-gray-500 mb-1">ตำแหน่ง</label><input type="text" name="position" value={userInfo.position} onChange={handleUserInfo} className="w-full border rounded px-3 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" /></div>
+                                    <div><label className="block text-xs font-medium text-gray-500 mb-1">กลุ่มงาน</label><input type="text" name="department" value={userInfo.department} onChange={handleUserInfo} className="w-full border rounded px-3 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" /></div>
+                                    <div><label className="block text-xs font-medium text-gray-500 mb-1">ภารกิจ</label><input type="text" name="mission" value={userInfo.mission} onChange={handleUserInfo} className="w-full border rounded px-3 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" /></div>
+                                    <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-500 mb-1">ช่วงเวลาประเมิน (สำหรับหัวกระดาษ)</label><input type="text" name="period" value={userInfo.period} onChange={handleUserInfo} className="w-full border rounded px-3 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" /></div>
+                                    <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-500 mb-1">ปีงบประมาณ</label><input type="text" name="year" value={userInfo.year} onChange={handleUserInfo} className="w-full border rounded px-3 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" /></div>
                                 </div>
 
+                                {/* Advanced Settings Toggle */}
                                 <div className="mb-6">
-                                    <button onClick={() => setShowSettings(!showSettings)} className="text-purple-600 font-medium text-sm flex items-center gap-1 hover:underline">
+                                    <button onClick={() => setShowSettings(!showSettings)} className="text-indigo-600 font-medium text-sm flex items-center gap-1 hover:underline">
                                         <i data-lucide="settings" className="w-4 h-4"></i> {showSettings ? "ซ่อนการตั้งค่าขั้นสูง" : "ตั้งค่าขั้นสูง (คะแนน/โลโก้/เพิ่มลดภาระงาน)"}
                                     </button>
                                     
                                     {showSettings && (
-                                        <div className="mt-3 p-4 border rounded-lg bg-gray-50 flex flex-col gap-6 text-sm">
+                                        <div className="mt-3 p-4 border rounded-lg bg-gray-50 flex flex-col gap-6 text-sm animate-in fade-in slide-in-from-top-2">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Column 1: Configs */}
                                                 <div className="space-y-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-gray-600 mb-1">อัตราคะแนนต่อนาที (Rate)</label>
-                                                        <input type="number" step="any" value={userInfo.rate} onChange={handleRateChange} className="w-32 border rounded px-3 py-1.5 font-bold text-purple-700" />
+                                                        <input type="number" step="any" value={userInfo.rate} onChange={handleRateChange} className="w-32 border rounded px-3 py-1.5 text-sm font-bold text-indigo-700" />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">โลโก้หน่วยงาน (บนหัวกระดาษ)</label>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">โลโก้หน่วยงาน (แสดงบนหัวกระดาษ)</label>
                                                         <div className="flex items-center gap-3">
                                                             {userInfo.logo && <img src={userInfo.logo} alt="Logo" className="h-10 object-contain border p-1 bg-white rounded" />}
-                                                            <label className="px-3 py-1.5 bg-white border border-gray-300 rounded cursor-pointer hover:bg-gray-100 flex items-center gap-1"><i data-lucide="image" className="w-4 h-4"></i> อัปโหลดโลโก้<input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} /></label>
+                                                            <label className="px-3 py-1.5 bg-white border border-gray-300 rounded cursor-pointer hover:bg-gray-100 flex items-center gap-1">
+                                                                <i data-lucide="image" className="w-4 h-4"></i> อัปโหลดโลโก้
+                                                                <input type="file" accept="image/png, image/jpeg" className="hidden" onChange={handleLogoUpload} />
+                                                            </label>
                                                             {userInfo.logo && <button onClick={removeLogo} className="text-red-500 hover:text-red-700 p-1"><i data-lucide="x" className="w-4 h-4"></i></button>}
                                                         </div>
+                                                        <p className="text-[10px] text-gray-400 mt-1">* แนะนำใช้รูป PNG พื้นหลังใส ขนาดไม่เกิน 2MB</p>
                                                     </div>
                                                 </div>
+
+                                                {/* Column 2: Excel Tools */}
                                                 <div>
                                                     <label className="block text-xs font-medium text-gray-600 mb-2">อัปเดตฐานข้อมูลภาระงาน (ผ่าน Excel)</label>
                                                     <div className="flex flex-wrap gap-2">
-                                                        <button onClick={exportExcel} className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"><i data-lucide="download" className="w-4 h-4"></i> โหลดเทมเพลต Excel</button>
-                                                        <label className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1 cursor-pointer"><i data-lucide="upload" className="w-4 h-4"></i> อัปโหลดไฟล์แก้ไข<input type="file" accept=".xlsx,.xls,.csv" onChange={importExcel} className="hidden" /></label>
+                                                        <button onClick={exportExcel} className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1 shadow-sm"><i data-lucide="download" className="w-4 h-4"></i> โหลดเทมเพลต Excel</button>
+                                                        <label className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1 cursor-pointer shadow-sm">
+                                                            <i data-lucide="upload" className="w-4 h-4"></i> อัปโหลดไฟล์ที่แก้ไข
+                                                            <input type="file" accept=".xlsx,.xls,.csv" onChange={importExcel} className="hidden" />
+                                                        </label>
                                                     </div>
+                                                    <p className="text-[10px] text-gray-500 mt-2">หากมีรายการเยอะ แนะนำให้โหลดเทมเพลตไปแก้ไขใน Excel แล้วอัปโหลดกลับเข้ามาแทนการพิมพ์ทีละข้อ</p>
                                                 </div>
                                             </div>
 
+                                            {/* Column 3: Task Manager (Manual Edit UI) */}
                                             <div className="border-t border-gray-200 pt-4">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <label className="block text-xs font-bold text-gray-700">จัดการฐานข้อมูลภาระงาน (Manual)</label>
-                                                    <button onClick={addTask} className="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 flex items-center gap-1"><i data-lucide="plus" className="w-3 h-3"></i> เพิ่มรายการใหม่</button>
+                                                    <label className="block text-xs font-bold text-gray-700">จัดการฐานข้อมูลภาระงาน (เพิ่ม/ลด/แก้ไขด้วยตัวเอง)</label>
+                                                    <button onClick={addTask} className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs rounded hover:bg-indigo-200 flex items-center gap-1 transition">
+                                                        <i data-lucide="plus" className="w-3 h-3"></i> เพิ่มรายการใหม่
+                                                    </button>
                                                 </div>
                                                 <div className="max-h-64 overflow-y-auto border rounded bg-white shadow-inner">
                                                     <table className="w-full text-xs text-left">
-                                                        <thead className="bg-gray-100 sticky top-0">
-                                                            <tr><th className="p-2 border">CODE</th><th className="p-2 border">หมวดหมู่</th><th className="p-2 border">กิจกรรม</th><th className="p-2 border w-16 text-center">หน่วย</th><th className="p-2 border w-16 text-center">นาที</th><th className="p-2 border w-10 text-center">ลบ</th></tr>
+                                                        <thead className="bg-gray-100 sticky top-0 shadow-sm z-10">
+                                                            <tr>
+                                                                <th className="p-2 border">CODE</th>
+                                                                <th className="p-2 border">หมวดหมู่</th>
+                                                                <th className="p-2 border">กิจกรรม</th>
+                                                                <th className="p-2 border w-16 text-center">หน่วย</th>
+                                                                <th className="p-2 border w-16 text-center">นาที</th>
+                                                                <th className="p-2 border w-10 text-center">ลบ</th>
+                                                            </tr>
                                                         </thead>
                                                         <tbody>
                                                             {tasks.map((t, idx) => (
-                                                                <tr key={`edit-${idx}`} className="hover:bg-purple-50">
-                                                                    <td className="p-0 border"><input value={t.code} onChange={e => handleTaskEdit(idx, 'code', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent" /></td>
-                                                                    <td className="p-0 border"><input value={t.category} onChange={e => handleTaskEdit(idx, 'category', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent" /></td>
-                                                                    <td className="p-0 border"><input value={t.name} onChange={e => handleTaskEdit(idx, 'name', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent" /></td>
-                                                                    <td className="p-0 border"><input value={t.unit} onChange={e => handleTaskEdit(idx, 'unit', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent text-center" /></td>
-                                                                    <td className="p-0 border"><input type="number" value={t.time} onChange={e => handleTaskEdit(idx, 'time', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent text-center" /></td>
-                                                                    <td className="p-1 border text-center"><button onClick={() => deleteTask(idx)} className="text-red-500 p-1.5"><i data-lucide="trash-2" className="w-3 h-3"></i></button></td>
+                                                                <tr key={`edit-${idx}`} className="hover:bg-blue-50">
+                                                                    <td className="p-0 border"><input value={t.code} onChange={e => handleTaskEdit(idx, 'code', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent focus:bg-white" /></td>
+                                                                    <td className="p-0 border"><input value={t.category} onChange={e => handleTaskEdit(idx, 'category', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent focus:bg-white" /></td>
+                                                                    <td className="p-0 border"><input value={t.name} onChange={e => handleTaskEdit(idx, 'name', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent focus:bg-white" /></td>
+                                                                    <td className="p-0 border"><input value={t.unit} onChange={e => handleTaskEdit(idx, 'unit', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent text-center focus:bg-white" /></td>
+                                                                    <td className="p-0 border"><input type="number" value={t.time} onChange={e => handleTaskEdit(idx, 'time', e.target.value)} className="w-full p-2 border-none outline-none bg-transparent text-center focus:bg-white" /></td>
+                                                                    <td className="p-1 border text-center">
+                                                                        <button onClick={() => deleteTask(idx)} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 hover:bg-red-100 rounded transition"><i data-lucide="trash-2" className="w-3 h-3"></i></button>
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -328,176 +492,197 @@
                                     )}
                                 </div>
 
-                                <div className="flex justify-between items-end mb-4 border-b pb-2">
-                                    <h2 className="text-xl font-bold text-gray-800">บันทึกภาระงานและแนบหลักฐาน</h2>
+                                <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6 flex justify-between items-center shadow-sm">
+                                    <div>
+                                        <p className="text-sm text-indigo-800 font-medium">สรุปผลงานปัจจุบัน:</p>
+                                        <p className="text-2xl font-bold text-indigo-600">{totalScore.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span className="text-sm font-normal text-indigo-500">แต้ม ({totalMins.toLocaleString()} นาที)</span></p>
+                                    </div>
                                     <div className="text-right">
-                                        <div className="text-sm text-gray-600">เวลารวม: <span className="font-bold text-purple-700">{totalMins.toLocaleString()}</span> นาที</div>
-                                        <div className="text-sm text-gray-600">คะแนนรวม: <span className="font-bold text-green-600">{(totalMins * userInfo.rate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> แต้ม</div>
-                                        <button onClick={clearData} className="mt-2 text-xs text-red-500 hover:underline flex items-center justify-end gap-1"><i data-lucide="refresh-cw" className="w-3 h-3"></i> ล้างข้อมูลตัวเลขและรูปภาพทั้งหมด</button>
+                                        <p className="text-xs text-gray-500">อัตรา: 1 นาที = {userInfo.rate} แต้ม</p>
+                                        <p className="text-xs text-gray-500">กรอกเฉพาะช่อง "จำนวนงาน"</p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    {tasks.map((task, idx) => (
-                                        <div key={idx} className={`border rounded-lg p-4 transition ${task.qty > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white hover:border-gray-300'}`}>
-                                            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs font-bold rounded">{task.code}</span>
-                                                        <span className="text-xs text-gray-500">{task.category}</span>
-                                                    </div>
-                                                    <p className="font-medium text-sm text-gray-900">{task.name}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">หน่วยนับ: {task.unit} | เวลา: {task.time} นาที/หน่วย</p>
-                                                </div>
-                                                <div className="flex items-center gap-4 w-full md:w-auto">
-                                                    <div className="flex flex-col items-center bg-white p-2 rounded border shadow-sm w-32">
-                                                        <label className="text-[10px] text-gray-500 mb-1">จำนวนงานที่ทำ</label>
-                                                        <input type="number" className="seamless-input text-xl font-bold text-purple-700" value={task.qty === 0 ? '' : task.qty} onChange={(e) => handleQtyChange(idx, e.target.value)} placeholder="0" />
-                                                    </div>
-                                                    <div className="flex flex-col gap-2">
-                                                        <label className="cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded text-xs font-medium shadow-sm flex items-center justify-center gap-1 transition">
-                                                            <i data-lucide="image-plus" className="w-4 h-4"></i> แนบรูปหลักฐาน
-                                                            <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleImageUpload(idx, e)} />
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            {task.images && task.images.length > 0 && (
-                                                <div className="mt-4 pt-3 border-t border-purple-100 flex gap-3 overflow-x-auto pb-2">
-                                                    {task.images.map((imgBase64, imgIdx) => (
-                                                        <div key={imgIdx} className="relative flex-shrink-0 group">
-                                                            <img src={imgBase64} alt="Evidence" className="h-24 w-auto rounded border border-gray-200 shadow-sm object-cover" />
-                                                            <button onClick={() => removeImage(idx, imgIdx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition"><i data-lucide="x" className="w-3 h-3"></i></button>
-                                                        </div>
+                                <div className="overflow-x-auto border rounded-lg shadow-sm">
+                                    <table className="w-full text-sm text-left table-borders">
+                                        <thead className="bg-gray-100 sticky top-0 shadow-sm z-10">
+                                            <tr>
+                                                <th className="p-2 w-16 text-center text-gray-600">CODE</th>
+                                                <th className="p-2 text-gray-600">กิจกรรม</th>
+                                                <th className="p-2 w-20 text-center text-gray-600">เวลา/หน่วย</th>
+                                                <th className="p-2 w-24 text-center bg-indigo-100 text-indigo-800 font-bold border-indigo-200">จำนวนงาน<br/><span className="text-[10px] font-normal">(กรอกที่นี่)</span></th>
+                                                <th className="p-2 w-20 text-center text-gray-600">เวลารวม</th>
+                                                <th className="p-2 w-64 text-gray-600">รูปหลักฐานอ้างอิง</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.keys(groupedTasks).map((category, cIdx) => (
+                                                <React.Fragment key={cIdx}>
+                                                    <tr><td colSpan="6" className="p-2 font-bold bg-gray-50 text-gray-700">{category}</td></tr>
+                                                    {groupedTasks[category].map((task) => {
+                                                        const globalIndex = tasks.findIndex(t => t.code === task.code);
+                                                        return (
+                                                            <tr key={task.code} className="hover:bg-blue-50/30 transition-colors">
+                                                                <td className="p-2 text-center text-xs font-mono text-gray-500">{task.code}</td>
+                                                                <td className="p-2 text-gray-800">{task.name} <span className="text-xs text-gray-400 ml-1">({task.unit})</span></td>
+                                                                <td className="p-1 text-center">
+                                                                    <input type="number" className="w-12 text-center bg-transparent border-b border-transparent focus:border-blue-500 outline-none text-gray-600" value={task.time} onChange={(e) => handleTimeChange(globalIndex, e.target.value)} title="แก้ไขเวลาตรงนี้ได้" />
+                                                                </td>
+                                                                <td className="p-1 text-center bg-indigo-50/40">
+                                                                    <input type="number" className="input-qty font-bold text-indigo-700 bg-white" value={task.qty === 0 ? '' : task.qty} onChange={(e) => handleQtyChange(globalIndex, e.target.value)} placeholder="0" />
+                                                                </td>
+                                                                <td className="p-2 text-center text-gray-600 font-medium">{(task.qty * task.time).toLocaleString()}</td>
+                                                                <td className="p-2">
+                                                                    <div className="flex flex-wrap gap-2 items-start">
+                                                                        {task.images && task.images.map((img, iIdx) => (
+                                                                            <div key={iIdx} className="relative group">
+                                                                                <img src={img} className="h-10 w-10 object-cover rounded border shadow-sm cursor-pointer hover:opacity-80 transition" alt="evidence" onClick={()=>window.open(img)} title="ดูรูปขยาย" />
+                                                                                <button onClick={() => removeImage(globalIndex, iIdx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hidden group-hover:block shadow-md"><i data-lucide="x" className="w-3 h-3"></i></button>
+                                                                            </div>
+                                                                        ))}
+                                                                        <label className="cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-2 py-1 rounded text-xs flex items-center gap-1 shadow-sm transition h-10">
+                                                                            <i data-lucide="upload-cloud" className="w-3 h-3"></i> แนบรูป
+                                                                            <input type="file" accept="image/png, image/jpeg, image/jpg" multiple className="hidden" onChange={(e) => handleImageUpload(globalIndex, e)} />
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </React.Fragment>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {}
+                        {step === 2 && (
+                            <div className="origin-top transition-transform duration-300 flex justify-center" style={{ zoom: `${printZoom}%` }}>
+                                <div className="bg-white p-10 shadow-lg page-container print-table" style={{width: '210mm', minHeight: '297mm'}}>
+                                    
+                                    {/* หัวกระดาษ พร้อม Logo */}
+                                    <div className="flex flex-col items-center justify-center mb-6">
+                                        {userInfo.logo && <img src={userInfo.logo} alt="Hospital Logo" className="h-[70px] mb-3 object-contain" />}
+                                        <div className="text-center font-bold text-[14px] leading-relaxed">
+                                            <p>แบบฟอร์มเก็บภาระงานเชิงคุณภาพ</p>
+                                            <p>ประจำปีงบประมาณ {userInfo.year} ({userInfo.period})</p>
+                                            <p className="mt-2 text-[13px] font-normal">ชื่อ {userInfo.name} ตำแหน่ง {userInfo.position}</p>
+                                            <p className="text-[13px] font-normal">{userInfo.department} {userInfo.mission}</p>
+                                        </div>
+                                    </div>
+
+                                    <table className="w-full text-center border-collapse text-[12px]">
+                                        <thead>
+                                            <tr className="bg-gray-100">
+                                                <th className="p-2 w-16">CODE</th>
+                                                <th className="p-2 text-left">กิจกรรม</th>
+                                                <th className="p-2 w-16">หน่วยนับ</th>
+                                                <th className="p-2 w-16">เวลาที่ใช้<br/>(นาที)</th>
+                                                <th className="p-2 w-16">รวมจำนวน</th>
+                                                <th className="p-2 w-20">รวมเวลา<br/>(นาที)</th>
+                                                <th className="p-2 w-20">รวมคะแนน</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.keys(groupedTasks).map((category, cIdx) => (
+                                                <React.Fragment key={`p-${cIdx}`}>
+                                                    <tr><td colSpan="7" className="p-2 font-bold bg-gray-50 text-left avoid-break">{category}</td></tr>
+                                                    {groupedTasks[category].map((task) => (
+                                                        <tr key={`pt-${task.code}`} className="avoid-break">
+                                                            <td className="p-1">{task.code}</td>
+                                                            <td className="p-1 text-left">{task.name}</td>
+                                                            <td className="p-1">{task.unit}</td>
+                                                            <td className="p-1">{task.time}</td>
+                                                            <td className="p-1 font-semibold">{task.qty > 0 ? task.qty : ''}</td>
+                                                            <td className="p-1">{task.qty > 0 ? (task.qty * task.time).toLocaleString() : 0}</td>
+                                                            <td className="p-1">{task.qty > 0 ? ((task.qty * task.time) * userInfo.rate).toFixed(2) : 0}</td>
+                                                        </tr>
                                                     ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                </React.Fragment>
+                                            ))}
+                                            <tr className="font-bold bg-gray-100">
+                                                <td colSpan="5" className="p-2 text-right">คะแนนรวมแต้ม</td>
+                                                <td className="p-2 text-blue-700">{totalMins.toLocaleString()}</td>
+                                                <td className="p-2 text-blue-700 text-[14px] underline">{totalScore.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         )}
 
-                        {activeTab === 2 && (
-                            <div className="bg-white p-10 shadow-lg print-page-break page-container mx-auto page-portrait relative">
-                                <button onClick={() => window.print()} className="absolute top-4 right-4 no-print bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2"><i data-lucide="printer" className="w-4 h-4"></i> พิมพ์ตาราง</button>
-                                
-                                {userInfo.logo && <div className="text-center mb-4"><img src={userInfo.logo} className="h-16 mx-auto object-contain" /></div>}
-                                
-                                <div className="text-center font-bold text-[15px] mb-6 leading-relaxed">
-                                    <p>แบบฟอร์มเก็บภาระงานเชิงคุณภาพ</p>
-                                    <p>ประจำปีงบประมาณ / รอบระยะเวลา {userInfo.period}</p>
-                                    <p>ชื่อ {userInfo.prefix} {userInfo.fname} นามสกุล {userInfo.lname} ตำแหน่ง {userInfo.position}</p>
-                                    <p>{userInfo.department}</p>
+                        {}
+                        {step === 3 && (
+                            <div className="origin-top transition-transform duration-300 flex flex-col items-center gap-8" style={{ zoom: `${printZoom}%` }}>
+                                {/* หน้าปกเอกสารหลักฐาน */}
+                                <div className="bg-white p-10 md:p-12 shadow-lg page-container flex flex-col items-center justify-center text-center relative" style={{width: '210mm', minHeight: '260mm', boxSizing: 'border-box'}}>
+                                    {userInfo.logo && <img src={userInfo.logo} alt="Hospital Logo" className="h-28 mb-8 object-contain" />}
+                                    
+                                    <h1 className="text-3xl font-bold mb-8 leading-normal text-gray-900">
+                                        หลักฐานการปฏิบัติงาน P4P เชิงคุณภาพ<br/>
+                                        <span className="text-2xl mt-4 block">{userInfo.period}</span>
+                                    </h1>
+                                    
+                                    <div className="text-xl leading-loose text-gray-800">
+                                        <h2 className="font-bold">{userInfo.name}</h2>
+                                        <h2>ตำแหน่ง {userInfo.position}</h2>
+                                        <h3>{userInfo.department}</h3>
+                                        <h3>{userInfo.mission}</h3>
+                                    </div>
+                                    
+                                    <div className="absolute bottom-10 text-gray-500 text-sm">
+                                        สร้างจากระบบ P4P Qualitative Report
+                                    </div>
                                 </div>
 
-                                <table className="w-full text-[13px] table-borders border-collapse">
-                                    <thead>
-                                        <tr className="bg-gray-100 text-center font-bold">
-                                            <th className="p-2 w-16">CODE</th>
-                                            <th className="p-2">กิจกรรม</th>
-                                            <th className="p-2 w-20">หน่วยนับ</th>
-                                            <th className="p-2 w-20">เวลาที่ใช้<br/>(นาที)</th>
-                                            <th className="p-2 w-20">รวมจำนวน</th>
-                                            <th className="p-2 w-24">รวมเวลาที่ใช้<br/>(นาที)</th>
-                                            <th className="p-2 w-24">รวมคะแนน<br/>ที่ได้</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {tasks.reduce((acc, task, idx) => {
-                                            if (acc.currentCat !== task.category) {
-                                                acc.currentCat = task.category;
-                                                acc.rows.push(<tr key={`cat-${idx}`}><td colSpan="7" className="p-2 font-bold bg-gray-50">{task.category}</td></tr>);
-                                            }
-                                            if (task.qty > 0) {
-                                                const taskMins = task.qty * task.time;
-                                                const taskScore = taskMins * userInfo.rate;
-                                                acc.rows.push(
-                                                    <tr key={`task-${idx}`} className="text-center">
-                                                        <td className="p-2">{task.code}</td>
-                                                        <td className="p-2 text-left">{task.name}</td>
-                                                        <td className="p-2">{task.unit}</td>
-                                                        <td className="p-2">{task.time}</td>
-                                                        <td className="p-2 font-bold text-purple-700">{task.qty.toLocaleString()}</td>
-                                                        <td className="p-2">{taskMins.toLocaleString()}</td>
-                                                        <td className="p-2">{taskScore.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                                                    </tr>
-                                                );
-                                            } else {
-                                                acc.rows.push(
-                                                    <tr key={`task-empty-${idx}`} className="text-center text-gray-500">
-                                                        <td className="p-2">{task.code}</td><td className="p-2 text-left">{task.name}</td><td className="p-2">{task.unit}</td><td className="p-2">{task.time}</td>
-                                                        <td className="p-2"></td><td className="p-2">0</td><td className="p-2">0</td>
-                                                    </tr>
-                                                );
-                                            }
-                                            return acc;
-                                        }, { currentCat: "", rows: [] }).rows}
-                                        <tr className="font-bold bg-purple-50 text-center text-[14px]">
-                                            <td colSpan="5" className="p-3 text-right">คะแนนรวมแต้ม</td>
-                                            <td className="p-3 text-purple-800">{totalMins.toLocaleString()}</td>
-                                            <td className="p-3 text-purple-800 underline">{(totalMins * userInfo.rate).toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {activeTab === 3 && (
-                            <div>
-                                {activeTasks.length === 0 ? (
-                                    <div className="text-center text-gray-500 py-20 bg-white rounded shadow">คุณยังไม่ได้กรอกผลงานหรือแนบรูปภาพในระบบ</div>
-                                ) : (
-                                    <div className="relative">
-                                        <button onClick={() => window.print()} className="fixed top-24 right-8 no-print bg-purple-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-purple-700 flex items-center gap-2 font-bold z-50"><i data-lucide="printer" className="w-5 h-5"></i> พิมพ์เล่มหลักฐาน</button>
+                                {/* วนลูปสร้างหน้าหลักฐาน เฉพาะงานที่มีการอัปโหลดรูป */}
+                                {tasks.filter(t => t.images && t.images.length > 0).map((task, idx) => (
+                                    <div key={`ev-${idx}`} className="bg-white p-12 shadow-lg page-container page-break relative" style={{width: '210mm', minHeight: '297mm'}}>
                                         
-                                        {/* หน้าปก */}
-                                        <div className="bg-white shadow-lg print-page-break page-container mx-auto page-portrait flex flex-col justify-center items-center text-center p-12" style={{maxWidth: '210mm', minHeight: '270mm'}}>
-                                            {userInfo.logo && <img src={userInfo.logo} className="h-32 mb-8 object-contain" />}
-                                            <h1 className="text-3xl font-bold mb-4 leading-relaxed">หลักฐานการปฏิบัติงาน P4P เชิงคุณภาพ</h1>
-                                            <h2 className="text-2xl font-medium mb-12">{userInfo.period}</h2>
-                                            <div className="text-xl leading-loose">
-                                                <p>{userInfo.prefix} {userInfo.fname} นามสกุล {userInfo.lname}</p>
-                                                <p>ตำแหน่ง {userInfo.position}</p>
-                                                <p>{userInfo.department}</p>
+                                        {/* หัวกระดาษ */}
+                                        <div className="mb-6 pb-2 border-b-2 border-gray-800 flex justify-between items-end">
+                                            <div>
+                                                <p className="font-bold text-[14px] text-gray-600">หลักฐานอ้างอิง P4P เชิงคุณภาพ | {userInfo.name}</p>
                                             </div>
+                                            {userInfo.logo && <img src={userInfo.logo} className="h-8 object-contain" alt="logo-small" />}
                                         </div>
 
-                                        {/* หน้าเนื้อหา (แยกหน้าตามภาระงาน) */}
-                                        {activeTasks.map((task, idx) => (
-                                            <div key={idx} className="bg-white shadow-lg print-page-break page-container mx-auto page-portrait p-10 mt-8" style={{maxWidth: '210mm', minHeight: '270mm'}}>
-                                                <div className="border-b-2 border-gray-300 pb-4 mb-6">
-                                                    <h3 className="text-lg font-bold text-gray-800">{idx + 1}. {task.name}</h3>
-                                                    <p className="text-sm text-gray-600 mt-1">อ้างอิงรหัส: {task.code} | หมวดหมู่: {task.category} | จำนวนที่ทำ: {task.qty} {task.unit}</p>
+                                        <h3 className="text-[16px] font-bold mb-6 text-indigo-800">
+                                            {idx+1}. {task.name} ({task.code})
+                                            <span className="ml-4 text-sm font-normal text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200 shadow-sm">
+                                                ผลงาน: {task.qty} {task.unit}
+                                            </span>
+                                        </h3>
+
+                                        {/* Grid รูปภาพ */}
+                                        <div className="grid grid-cols-1 gap-6">
+                                            {task.images.map((img, imgIdx) => (
+                                                <div key={imgIdx} className="border border-gray-200 p-2 rounded bg-gray-50 flex flex-col items-center shadow-sm">
+                                                    <img src={img} className="max-w-full h-auto object-contain max-h-[450px]" alt={`evidence-${idx}-${imgIdx}`} />
+                                                    <p className="text-center text-[12px] text-gray-500 mt-2 font-mono">รูปประกอบที่ {imgIdx + 1}</p>
                                                 </div>
-                                                
-                                                <div className="flex flex-col gap-6 items-center">
-                                                    {task.images && task.images.length > 0 ? (
-                                                        task.images.map((img, i) => (
-                                                            <div key={i} className="w-full text-center">
-                                                                <img src={img} className="max-w-full max-h-[800px] object-contain mx-auto border border-gray-200 p-1 shadow-sm" />
-                                                                <p className="text-sm text-gray-500 italic mt-2">ภาพที่ {i+1} แสดงหลักฐานการปฏิบัติงาน {task.code}</p>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="h-40 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 w-full rounded-lg">
-                                                            (ระบุข้อมูลว่าทำกิจกรรมแล้ว แต่ไม่ได้แนบรูปหลักฐานในระบบ)
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                                
+                                {tasks.filter(t => t.images && t.images.length > 0).length === 0 && (
+                                    <div className="bg-white p-12 shadow-lg w-full max-w-[210mm] text-center text-gray-500 no-print rounded-lg">
+                                        <i data-lucide="image-off" className="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                                        <p className="text-lg">ยังไม่มีการอัปโหลดรูปภาพหลักฐาน</p>
+                                        <p className="text-sm mt-2">กรุณากลับไปที่ขั้นตอนที่ 1 เพื่ออัปโหลดรูปภาพประกอบผลงาน</p>
                                     </div>
                                 )}
                             </div>
                         )}
-                        
-                        {/* Credits Section */}
-                        <div className="text-center mt-12 mb-8 no-print text-sm text-gray-500 font-medium">
-                            <p>Developed by: <span className="text-purple-700 font-bold">ภก.จุมพล อุทธา</span></p>
-                            <p className="text-xs mt-1">หัวหน้างานคลังยาและเภสัชสารสนเทศ กลุ่มงานเภสัชกรรม โรงพยาบาลมะเร็งอุบลราชธานี</p>
-                        </div>
+                    </div>
+
+                    {/* Developer Credit Footer */}
+                    <div className="text-center py-6 text-gray-500 text-sm no-print mt-auto bg-gray-200/50 border-t border-gray-300">
+                        <p className="font-semibold text-gray-600">พัฒนาโดย: ภก.จุมพล อุทธา หัวหน้างานคลังยาและเภสัชสารสนเทศ</p>
+                        <p>กลุ่มงานเภสัชกรรม โรงพยาบาลมะเร็งอุบลราชธานี</p>
                     </div>
                 </div>
             );
@@ -505,8 +690,8 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-        setTimeout(() => typeof lucide !== 'undefined' && lucide.createIcons(), 500);
+
+        setTimeout(() => lucide.createIcons(), 500);
     </script>
 </body>
 </html>
-    
